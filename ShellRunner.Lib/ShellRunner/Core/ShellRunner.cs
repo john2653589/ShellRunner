@@ -6,7 +6,7 @@ namespace Rugal.ShellRunner.Core
 {
     public class ShellRunner
     {
-        private PowerShell Shell;
+        private readonly PowerShell Shell;
 
         private SshConnectInfo SshInfo;
         private SshClient Ssh;

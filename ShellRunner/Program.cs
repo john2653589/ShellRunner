@@ -1,6 +1,8 @@
 ﻿using Rugal.ShellRunner.Core;
 using Rugal.ShellRunner.Model;
 
+Console.WriteLine("Shell Runner v1.0.1");
+
 var Args = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
 var Runner = new ShellRunner();
