@@ -8,7 +8,6 @@ Console.WriteLine($"Shell Runner v{Version} From Rugal");
 var Args = Environment.GetCommandLineArgs().Skip(1).ToArray();
 var Runner = new ShellRunner();
 
-Args = new[] { "Template-Release.txt -@Type dev -@ImageName servicecrims -@YamlFile api" };
 if (Args.Length > 0)
 {
     var CommandLine = string.Join(' ', Args);
