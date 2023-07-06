@@ -1,7 +1,7 @@
 ﻿using Rugal.ShellRunner.Core;
 using Rugal.ShellRunner.Model;
 
-const string Version = "1.0.4";
+const string Version = "1.0.5";
 
 Console.WriteLine($"Shell Runner v{Version} From Rugal");
 

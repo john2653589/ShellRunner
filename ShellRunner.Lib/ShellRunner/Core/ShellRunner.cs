@@ -1,7 +1,6 @@
 ﻿using Renci.SshNet;
 using Rugal.ShellRunner.Model;
 using System.Management.Automation;
-using System.Runtime.Intrinsics.X86;
 
 namespace Rugal.ShellRunner.Core
 {
@@ -12,8 +11,9 @@ namespace Rugal.ShellRunner.Core
         private string StartPath { get; set; }
         public VariableModel Variable { get; set; }
         public RunnerMode RunMode { get; set; }
-        public bool IsPrintMode { get; set; }
         public string NowLocation { get; set; }
+        public bool IsPrintMode { get; set; }
+        public bool IsInvokeMode { get; set; }
         #endregion
 
         #region Ssh Property
@@ -119,6 +119,12 @@ namespace Rugal.ShellRunner.Core
                 case CommandType.EndIf:
                     return CommandResult.EndIf();
 
+                case CommandType.Invoke:
+                    IsInvokeMode = true;
+                    break;
+                case CommandType.EndInvoke:
+                    IsInvokeMode = false;
+                    break;
                 case CommandType.None:
                 default:
                     CommandSend(Model);
@@ -190,7 +196,7 @@ namespace Rugal.ShellRunner.Core
             else
             {
                 var ShellRet = ShellInvoke(new CommandLine("Get-Location"), false);
-                var ShellLocation = ShellRet.Result.First().BaseObject.ToString();
+                var ShellLocation = ShellRet.Result?.FirstOrDefault()?.BaseObject?.ToString();
                 NowLocation = ShellLocation;
                 StartPath ??= ShellLocation;
                 return ShellLocation;
@@ -198,27 +204,31 @@ namespace Rugal.ShellRunner.Core
         }
         private ShellResult ShellInvoke(CommandLine Model, bool IsOutString = true)
         {
+            IAsyncResult AsyncResult = null;
+            var GetStreams = Shell.Streams;
+            
             try
             {
                 var Script = Model.FullCommand;
-                if (IsOutString)
+                if (!IsInvokeMode && IsOutString)
                     Script += " | Out-String";
 
                 Shell.AddScript(Script);
-                var GetStreams = Shell.Streams;
-                var RunResult = Shell.Invoke();
+
+                if (IsInvokeMode)
+                    AsyncResult = ShellInvokeSync(GetStreams);
+
+                var RunResult = !IsInvokeMode ? Shell.Invoke() : null;
                 var ErrorMessage = string.Join("\n", GetStreams.Error
                     .Select(Item => Item.Exception.ToString()));
+
                 var Result = new ShellResult()
                 {
                     Command = Model,
                     Errors = GetStreams.Error.ToList(),
                     ErrorMessage = ErrorMessage,
-                    Result = RunResult.ToList(),
+                    Result = RunResult?.ToList(),
                 };
-
-                GetStreams.Error.Clear();
-                Shell.Commands.Clear();
 
                 return Result;
             }
@@ -232,6 +242,41 @@ namespace Rugal.ShellRunner.Core
                     Result = null,
                 };
             }
+            finally
+            {
+                GetStreams.ClearStreams();
+                Shell.Commands.Clear();
+
+                if (IsInvokeMode)
+                {
+                    Shell.EndInvoke(AsyncResult);
+                }
+            }
+        }
+        private IAsyncResult ShellInvokeSync(PSDataStreams GetStreams)
+        {
+            GetStreams.Progress.DataAdded += (s, e) =>
+            {
+                var Result = s as PSDataCollection<ProgressRecord>;
+                var PrintResult = Result.First().ToString();
+                Console.WriteLine(PrintResult);
+            };
+            GetStreams.Information.DataAdded += (s, e) =>
+            {
+                var Result = s as PSDataCollection<InformationRecord>;
+                var PrintResult = Result.First().ToString();
+                Console.WriteLine(PrintResult);
+            };
+            var Input = new PSDataCollection<PSObject>();
+            var Output = new PSDataCollection<PSObject>();
+            Output.DataAdded += (s, e) =>
+            {
+                var Result = s as PSDataCollection<PSObject>;
+                var Text = Result[e.Index].ToString();
+                Console.WriteLine(Text);
+            };
+            var Result = Shell.BeginInvoke(Input, Output);
+            return Result;
         }
         private static void ShellPrint(ShellResult Model)
         {
@@ -242,7 +287,7 @@ namespace Rugal.ShellRunner.Core
             }
             else if (Model.IsHasErrorMessage)
                 Console.WriteLine(Model.ErrorMessage);
-            else
+            else if (Model.Result is not null)
             {
                 foreach (var Item in Model.Result)
                 {

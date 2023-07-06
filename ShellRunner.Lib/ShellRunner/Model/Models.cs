@@ -655,6 +655,8 @@ namespace Rugal.ShellRunner.Model
         RmVarReq,
         IfExist,
         EndIf,
+        Invoke,
+        EndInvoke,
     }
     public enum PartCatchMode
     {
