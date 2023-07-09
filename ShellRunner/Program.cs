@@ -1,7 +1,7 @@
 ﻿using Rugal.ShellRunner.Core;
 using Rugal.ShellRunner.Model;
 
-const string Version = "1.0.5";
+const string Version = "1.0.6";
 
 Console.WriteLine($"Shell Runner v{Version} From Rugal");
 
@@ -24,12 +24,19 @@ void UserLoop()
 {
     while (true)
     {
-        var Location = Runner.GetCurrentLocation();
-        Console.Write($"{Location}> ");
+        Runner.PrintLocation();
 
         var Input = Console.ReadLine();
         if (string.IsNullOrWhiteSpace(Input))
+        {
+            if (Runner.IsInSsh)
+            {
+                Runner.LastSshCommandText = "";
+                Runner.SshSendText("");
+                Runner.WaitSshResult();
+            }
             continue;
+        }
 
         Runner.RunMode = RunnerMode.UserInput;
         if (Input.ToLower() == "exit")
@@ -37,5 +44,7 @@ void UserLoop()
 
         var Command = new CommandLine(Input);
         Runner.Run(Command);
+
+        Task.Delay(10).Wait();
     }
 }
