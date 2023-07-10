@@ -9,6 +9,7 @@ namespace Rugal.ShellRunner.Core
         {
             Shell = PowerShell.Create();
             Variable = new VariableModel();
+            GetLocation();
         }
 
         #region Common Method
@@ -104,6 +105,20 @@ namespace Rugal.ShellRunner.Core
                     break;
                 case CommandType.EndInvoke:
                     IsInvokeMode = false;
+                    break;
+                case CommandType.Clr:
+                    Console.Clear();
+                    break;
+                case CommandType.Position:
+                    IsPositionLock = true;
+                    PositionY = Console.CursorTop + 1;
+                    MaxPositionY = -1;
+                    Console.WriteLine($"Set position lock on y:{PositionY}");
+                    break;
+                case CommandType.EndPosition:
+                    IsPositionLock = false;
+                    Console.WriteLine($"Set position lock off");
+
                     break;
                 case CommandType.None:
                 default:

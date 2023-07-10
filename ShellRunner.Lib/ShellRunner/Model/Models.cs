@@ -657,6 +657,9 @@ namespace Rugal.ShellRunner.Model
         EndIf,
         Invoke,
         EndInvoke,
+        Clr,
+        Position,
+        EndPosition,
     }
     public enum PartCatchMode
     {

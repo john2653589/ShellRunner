@@ -2,6 +2,7 @@
 using Rugal.ShellRunner.Model;
 using System.Management.Automation;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Rugal.ShellRunner.Core
 {
@@ -46,7 +47,7 @@ namespace Rugal.ShellRunner.Core
                     {
                         Console.WriteLine("Ssh connection success\n");
 
-                        SshStream = Ssh.CreateShellStream("", 0, 0, 0, 0, 10240);
+                        SshStream = Ssh.CreateShellStream("", 0, 0, 0, 0, 40960);
                         SshStream.ErrorOccurred += (s, e) =>
                         {
                             Console.WriteLine(e.Exception.ToString());
@@ -112,8 +113,22 @@ namespace Rugal.ShellRunner.Core
         }
         private void ProcessSshResult(string Result)
         {
+            var AnsiPattern = @"\u001b\[\d+[A-Za-z]"; // 匹配逃脫序列的正則表達式
+            Result = Regex
+                .Replace(Result, AnsiPattern, "")
+                .TrimStart(' ')
+                .TrimEnd(' ')
+                .Replace("\u001b", "");
+
+            if (string.IsNullOrWhiteSpace(Result))
+                return;
+
+            if (IsPositionLock)
+                Console.SetCursorPosition(0, PositionY);
+
             SshResultQueue ??= new List<string> { };
 
+            var IsLastRow = false;
             foreach (var Item in Result.Split('\r', '\n'))
             {
                 if (string.IsNullOrWhiteSpace(Item))
@@ -122,17 +137,29 @@ namespace Rugal.ShellRunner.Core
                 if (LastSshCommand is not null && LastSshCommand.FullCommand == Item)
                     continue;
 
-                if (IsLastResult(Item))
-                {
-                    SshLastLocation = Item;
-                    var NextLine = LastSshCommandText == "" ? "" : "\n";
-                    Console.Write($"{NextLine}{Item.TrimEnd(' ', '#')}> ");
-                }
-                else
-                    Console.WriteLine(Item);
-
+                IsLastRow = IsLastResult(Item);
+                SshResultQueue.Clear();
                 SshResultQueue.Add(Item);
             }
+
+            if (IsLastRow)
+            {
+                SshLastLocation = SshResultQueue.Last();
+                var NextLine = LastSshCommandText == "" ? "" : "\n";
+                Console.SetCursorPosition(0, MaxPositionY + 1);
+                Console.Write($"{NextLine}{SshLastLocation.TrimEnd(' ', '#')}> ");
+            }
+            else
+            {
+                var PrintText = $"{Result}";
+                while (PrintText.Length < Console.WindowWidth)
+                    PrintText += ' ';
+                Console.WriteLine(PrintText);
+            }
+
+            var NowPosition = Console.CursorTop;
+            if (NowPosition > MaxPositionY)
+                MaxPositionY = NowPosition;
         }
         private bool IsLastResult(string Result)
         {

@@ -13,18 +13,26 @@ namespace Rugal.ShellRunner.Core
         public string NowLocation { get; set; }
         public bool IsPrintMode { get; set; }
         public bool IsInvokeMode { get; set; }
+        public bool IsPositionLock { get; set; }
+        public int MaxPositionY { get; set; }
+        public int PositionY { get; set; }
         #endregion
 
         #region Shell
+        public string GetLocation()
+        {
+            var ShellRet = ShellInvoke(new CommandLine("Get-Location"), false);
+            var ShellLocation = ShellRet.Result?.FirstOrDefault()?.BaseObject?.ToString();
+            NowLocation = ShellLocation;
+            StartPath ??= ShellLocation;
+            return ShellLocation;
+        }
         public void PrintLocation()
         {
             if (IsInSsh)
                 return;
 
-            var ShellRet = ShellInvoke(new CommandLine("Get-Location"), false);
-            var ShellLocation = ShellRet.Result?.FirstOrDefault()?.BaseObject?.ToString();
-            NowLocation = ShellLocation;
-            StartPath ??= ShellLocation;
+            var ShellLocation = GetLocation();
             Console.Write($"{ShellLocation}> ");
         }
         private ShellResult ShellInvoke(CommandLine Model, bool IsOutString = true)
@@ -103,8 +111,11 @@ namespace Rugal.ShellRunner.Core
             var Result = Shell.BeginInvoke(Input, Output);
             return Result;
         }
-        private static void ShellPrint(ShellResult Model)
+        private void ShellPrint(ShellResult Model)
         {
+            if (IsPositionLock)
+                Console.SetCursorPosition(0, PositionY);
+
             if (Model.IsHasErrors)
             {
                 foreach (var Item in Model.Errors)

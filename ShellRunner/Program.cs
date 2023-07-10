@@ -1,9 +1,11 @@
 ﻿using Rugal.ShellRunner.Core;
 using Rugal.ShellRunner.Model;
+using System.Text;
 
-const string Version = "1.0.6";
+const string Version = "1.0.7";
 
 Console.WriteLine($"Shell Runner v{Version} From Rugal");
+Console.OutputEncoding = Encoding.UTF8;
 
 var Args = Environment.GetCommandLineArgs().Skip(1).ToArray();
 var Runner = new ShellRunner();
